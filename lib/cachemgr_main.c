@@ -1,3 +1,6 @@
+/*
+    Entry point for tblmgr process
+*/
 #include "postgres.h"
 
 #include "miscadmin.h"
@@ -18,7 +21,9 @@
 #include "utils/snapmgr.h"
 #include "tcop/utility.h";
 
+#ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
+#endif
 
 PG_FUNCTION_INFO_V1( worker_spi_launch );
 
