@@ -1,0 +1,5 @@
+# Cachemgr extension
+comment = 'Cache to DB integration'
+default_version = '1.0'
+module_pathname = '$libdir/cachemgr'
+relocatable = true

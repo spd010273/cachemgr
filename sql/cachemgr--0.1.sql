@@ -36,6 +36,12 @@ INSERT INTO @extschema@.tb_setting
                 'error_tx_level_no_connect',
                 'notice',
                 'Transaction level of backend warning if connection to memcache/redis cannot be established (notice|exception)'
+            ),
+            (
+                5,
+                'cache_sync_level',
+                'async',
+                'Whether or not cache synchronization with the database is synchronous or asynchronous'
             );
 
 /*

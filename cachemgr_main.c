@@ -19,7 +19,10 @@
 #include "pgstat.h"
 #include "utils/builtins.h"
 #include "utils/snapmgr.h"
-#include "tcop/utility.h";
+#include "tcop/utility.h"
+
+#define SERVER_PROTOCOL 2
+#define SCHEMA "cachemgr"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -37,6 +40,7 @@ static int cachemgr_sleep_time   = 10;
 static int cachemgr_worker_count = 1;
 
 #define PROCESS_NAME "cachemgr_bgw"
+#define WORKER_NAME "cachemgr_bgw"
 
 static void cachemgr_sigterm( SIGNAL_ARGS )
 {
@@ -67,6 +71,54 @@ static void initialize_cachemgr( void )
     PushActiveSnapshop( GetTransactionSnapshot() );
     pgstat_report_activity( STATE_RUNNING, "Initializing Cache Manager" );
 
+    /*
+        Determine the protocol, and whether or not we need to connect via Redis or Memcached 
+    */
+
+    StringInfoData buf;
+    int ret;
+    bool isnull;
+    char * protocol;
+
+    initStringInfo( &buf );
+
+    appendStringInfo(
+        &buf,
+        "SELECT value FROM \"%s\".tb_setting WHERE setting = %d",
+        SCHEMA,
+        SERVER_PROTOCOL
+    );
+    
+    ret = SPI_execute( buf.data, true, 0 );
+
+    if( ret != SPI_OK_SELECT )
+    {
+        elog( FATAL, "SPI_execute failed: error code %d", ret );
+    }
+
+    if( SPI_processed != 1 )
+    {
+        elog( FATAL, "Not a singleton result" );
+    }
+
+    protocol = DataumGetCString(
+        SPI_getvalue(
+            SPI_tuptable->vals[0],
+            SPI_tuptable->tupdesc,
+            1,
+            &isnull
+        )
+    );
+
+    if( isnull )
+    {
+        elog( FATAL, "Getting protocol gave NULL result" );
+    }
+
+    if( strlen( protocol ) == 0 )
+    {
+        elog( FATAL, "No protocol specified" );
+    }
     /* D O   S O M E   S T U F F */
 
 
@@ -199,7 +251,7 @@ void _PG_init( void )
     }
 }
 
-Datum tblmgr_launch( PG_FUNCTION_ARGS )
+Datum cachemgr_launch( PG_FUNCTION_ARGS )
 {
     int32 i = PG_GETARG_INT32( 0 );
     BackgroundWorker worker;
